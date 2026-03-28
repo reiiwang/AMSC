@@ -79,9 +79,9 @@ AgentMemory/
 - [x] 接 DummyMemory，graph 骨架完成
 
 ### Phase 2 — 接入 LangMem
-- [ ] 實作 `base.py` 抽象介面（`save` / `retrieve` 兩個方法）
-- [ ] 實作 `langmem_adapter.py`
-- [ ] 跑 mock 對話，驗證 memory 寫入/讀取正常
+- [x] 實作 `base.py` 抽象介面（`save` / `retrieve` 兩個方法）
+- [x] 實作 `langmem_adapter.py`（InMemoryStore + text-embedding-3-small + create_memory_manager）
+- [x] 跑 smoke test，驗證 memory 寫入/讀取正常
 
 ### Phase 3 — 接入 Mem0
 - [ ] 實作 `mem0_adapter.py`（同介面）
