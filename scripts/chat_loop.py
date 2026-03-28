@@ -1,5 +1,10 @@
 """Interactive chat loop. Usage: python scripts/chat_loop.py [dummy|langmem|mem0]"""
 import sys
+from pathlib import Path
+
+# ensure project root is on sys.path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from dotenv import load_dotenv
 load_dotenv()
 
