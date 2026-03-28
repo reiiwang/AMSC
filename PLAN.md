@@ -84,8 +84,9 @@ AgentMemory/
 - [x] 跑 smoke test，驗證 memory 寫入/讀取正常
 
 ### Phase 3 — 接入 Mem0
-- [ ] 實作 `mem0_adapter.py`（同介面）
-- [ ] 替換 adapter，其他 agent 邏輯不動
+- [x] 實作 `mem0_adapter.py`（同介面）
+- [x] 使用 ChromaDB 持久化至 `.mem0_store/`（與 RAG 的 `.chroma/` 分離）
+- [x] smoke test 通過
 
 ### Phase 4 — LLM-as-Judge 評估
 - [ ] `metrics.py`：定義三個評分維度（各 1-5 分）

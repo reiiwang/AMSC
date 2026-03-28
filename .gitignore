@@ -12,4 +12,5 @@ wheels/
 .env
 .chroma/
 .langmem_store/
+.mem0_store/
 graph.png
