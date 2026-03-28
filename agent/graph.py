@@ -45,6 +45,12 @@ def build_graph(memory: BaseMemory = None, user_id: str = "default") -> StateGra
             include_system=False,
         )
 
+        # trim_messages may cut the AIMessage(tool_calls=...) but keep the
+        # ToolMessage response — OpenAI rejects this ordering. Drop any
+        # leading tool messages to ensure the sequence is valid.
+        while recent_messages and recent_messages[0].type == "tool":
+            recent_messages = recent_messages[1:]
+
         response = llm.invoke([SystemMessage(content=system_content)] + recent_messages)
         return {"messages": [response]}
 
