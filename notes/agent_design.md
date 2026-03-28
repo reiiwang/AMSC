@@ -285,7 +285,34 @@ class BaseMemory(ABC):
 
 ---
 
-## 八、訊息類型對照表
+## 八、踩坑記錄
+
+### ToolMessage 順序問題（OpenAI 400 error）
+
+**錯誤訊息**：
+```
+openai.BadRequestError: 400 - messages with role 'tool' must be a response
+to a preceeding message with 'tool_calls'.
+```
+
+**原因**：`trim_messages` 以 `strategy="last"` + `max_tokens=5`（按訊息條數）裁切時，
+可能恰好切掉了 `AIMessage(tool_calls=[...])` 但保留了後面的 `ToolMessage`。
+OpenAI 要求 `ToolMessage` 之前必須有對應的 `AIMessage` 含 `tool_calls`，否則拒絕請求。
+
+**情境**：對話歷史超過 5 條，且最近的工具呼叫跨越了裁切邊界時觸發。
+
+**修法**：trim 後額外過濾掉開頭的孤立 `ToolMessage`：
+
+```python
+while recent_messages and recent_messages[0].type == "tool":
+    recent_messages = recent_messages[1:]
+```
+
+**位置**：`agent/graph.py` 的 `call_agent` 節點，`trim_messages` 之後、`llm.invoke` 之前。
+
+---
+
+## 九、訊息類型對照表
 
 LangGraph message type 與各層系統的對應：
 
