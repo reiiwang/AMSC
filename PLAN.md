@@ -70,9 +70,13 @@ AgentMemory/
 - [ ] 設計 `eval_cases.json`（20 題：需要記憶才能正確回答）（暫緩）
 
 ### Phase 1 — LangGraph Agent 骨架
-- [ ] 定義 `state.py`（包含 memory context slot）
-- [ ] 建 `graph.py`（節點順序：retrieve memory → call LLM → save memory）
-- [ ] 先接 dummy memory（不儲存），確認 graph 跑通
+- [x] 定義 `state.py`（包含 memory context slot）
+- [x] 建 `graph.py`（條件式節點：retrieve_memory → agent ⇄ tools → save_memory）
+- [x] 實作 `agent/tools.py`（search_knowledge_base、get_user_health_profile）
+- [x] 建 `rag/indexer.py`（OpenAI text-embedding-3-small + ChromaDB 持久化）
+- [x] 建 `rag/retriever.py`（只做 retrieval，不重新 embed）
+- [x] 建 `data/knowledge_base.json`（12 條健康知識）
+- [x] 接 DummyMemory，graph 骨架完成
 
 ### Phase 2 — 接入 LangMem
 - [ ] 實作 `base.py` 抽象介面（`save` / `retrieve` 兩個方法）
