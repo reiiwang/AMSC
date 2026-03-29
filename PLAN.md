@@ -88,6 +88,11 @@ AgentMemory/
 - [x] 使用 ChromaDB 持久化至 `.mem0_store/`（與 RAG 的 `.chroma/` 分離）
 - [x] smoke test 通過
 
+### Phase 3b — 接入 memsearch（OpenClaw 架構）
+- [x] 實作 `memsearch_adapter.py`（Markdown-first，hybrid vector + BM25 search）
+- [x] 持久化：`.memsearch_store/<user_id>/` 存 .md 檔 + Milvus Lite .db
+- [x] smoke test 通過
+
 ### Phase 4 — LLM-as-Judge 評估
 - [ ] `metrics.py`：定義三個評分維度（各 1-5 分）
 - [ ] `judge.py`：呼叫 Claude 對每個回答評分，輸出 JSON

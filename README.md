@@ -40,12 +40,13 @@ save_memory       ── 將對話存入 memory 框架
 
 ## 比較對象
 
-| | LangMem | Mem0 |
-|---|---|---|
-| 定位 | LangGraph 原生 | Framework-agnostic |
-| 記憶類型 | Semantic / Episodic / Procedural | 向量 + 知識圖譜 |
-| 本地持久化 | `.langmem_store/<user_id>.json` | `.mem0_store/`（ChromaDB + SQLite）|
-| 特色 | Procedural memory 可優化 system prompt | 實體關係抽取，跨對話連結 |
+| | LangMem | Mem0 | memsearch |
+|---|---|---|---|
+| 定位 | LangGraph 原生 | Framework-agnostic | OpenClaw 架構，framework-agnostic |
+| 記憶類型 | Semantic / Episodic / Procedural | 向量 + 知識圖譜 | Markdown 對話 chunk |
+| 搜尋方式 | Vector search | Vector search | **Hybrid（Dense + BM25）** |
+| 本地持久化 | `.langmem_store/<user_id>.json` | `.mem0_store/`（ChromaDB + SQLite）| `.memsearch_store/<user_id>/`（.md + Milvus Lite）|
+| 特色 | Procedural memory 可優化 system prompt | 實體關係抽取，跨對話連結 | **Markdown 可讀、可 Git 版控** |
 
 ---
 
@@ -74,9 +75,10 @@ cp .env.example .env
 make index
 
 # 4. 開始對話
-make chat-dummy      # 無記憶
-make chat-langmem    # LangMem
-make chat-mem0       # Mem0
+make chat-dummy        # 無記憶
+make chat-langmem      # LangMem
+make chat-mem0         # Mem0
+make chat-memsearch    # memsearch（OpenClaw）
 ```
 
 ---
@@ -121,6 +123,7 @@ AgentMemory/
 | 1 | ✅ | LangGraph agent（工具呼叫、RAG、條件式節點）|
 | 2 | ✅ | LangMem adapter |
 | 3 | ✅ | Mem0 adapter |
+| 3b | ✅ | memsearch adapter（OpenClaw，Markdown-first）|
 | 4 | 🔲 | LLM-as-judge 評估（連貫性 / 個人化 / 事實準確性）|
 | 5 | 🔲 | Notebook 視覺化比較 |
 
@@ -131,6 +134,8 @@ AgentMemory/
 - **LangGraph** — agent orchestration
 - **LangMem** — memory framework A
 - **Mem0** — memory framework B
+- **memsearch** — memory framework C（OpenClaw 架構）
 - **ChromaDB** — RAG 向量儲存 + Mem0 後端
+- **Milvus Lite** — memsearch 向量後端
 - **OpenAI** — gpt-4o-mini（LLM）、text-embedding-3-small（embedding）
 - **uv** — 套件管理

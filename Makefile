@@ -1,8 +1,8 @@
-.PHONY: install index test test-langmem test-mem0 test-all \
+.PHONY: install index test test-langmem test-mem0 test-memsearch test-all \
         graph-mermaid graph-png \
-        clean-chroma clean-langmem clean-mem0 clean-all \
-        chat-dummy chat-langmem chat-mem0 \
-        inspect-langmem inspect-mem0
+        clean-chroma clean-langmem clean-mem0 clean-memsearch clean-all \
+        chat-dummy chat-langmem chat-mem0 chat-memsearch \
+        inspect-langmem inspect-mem0 inspect-memsearch
 
 # ── 環境 ──────────────────────────────────────────────
 install:
@@ -23,7 +23,10 @@ test-langmem:
 test-mem0:
 	uv run python test_mem0.py
 
-test-all: test test-langmem test-mem0
+test-memsearch:
+	uv run python test_memsearch.py
+
+test-all: test test-langmem test-mem0 test-memsearch
 
 # ── Graph 視覺化 ──────────────────────────────────────
 graph-mermaid:
@@ -49,6 +52,9 @@ chat-langmem:
 chat-mem0:
 	uv run python scripts/chat_loop.py mem0
 
+chat-memsearch:
+	uv run python scripts/chat_loop.py memsearch
+
 # ── Memory 查詢 ──────────────────────────────────────
 # 用法: make inspect-langmem USER=user_001
 #       make inspect-mem0    USER=user_001
@@ -60,6 +66,9 @@ inspect-langmem:
 inspect-mem0:
 	uv run python scripts/inspect_memory.py mem0 $(USER)
 
+inspect-memsearch:
+	uv run python scripts/inspect_memory.py memsearch $(USER)
+
 # ── 清除 store ────────────────────────────────────────
 clean-chroma:
 	rm -rf .chroma/
@@ -70,5 +79,8 @@ clean-langmem:
 clean-mem0:
 	rm -rf .mem0_store/
 
-clean-all: clean-chroma clean-langmem clean-mem0
+clean-memsearch:
+	rm -rf .memsearch_store/
+
+clean-all: clean-chroma clean-langmem clean-mem0 clean-memsearch
 	@echo "All stores cleared."

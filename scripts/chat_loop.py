@@ -18,6 +18,9 @@ if adapter_name == "langmem":
 elif adapter_name == "mem0":
     from memory.mem0_adapter import Mem0Adapter
     memory = Mem0Adapter()
+elif adapter_name == "memsearch":
+    from memory.memsearch_adapter import MemsearchAdapter
+    memory = MemsearchAdapter()
 else:
     from memory.base import DummyMemory
     memory = DummyMemory()

@@ -13,4 +13,5 @@ wheels/
 .chroma/
 .langmem_store/
 .mem0_store/
+.memsearch_store/
 graph.png

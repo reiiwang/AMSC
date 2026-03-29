@@ -2,7 +2,7 @@
 
 Usage:
     python scripts/inspect_memory.py <adapter> <user_id>
-    adapter: langmem | mem0
+    adapter: langmem | mem0 | memsearch
 """
 import sys
 from pathlib import Path
@@ -45,6 +45,19 @@ elif adapter_name == "mem0":
             print(f"[{i}] {m['memory']}")
             print(f"    id: {m['id']}  score: {m.get('score', 'N/A')}\n")
 
+elif adapter_name == "memsearch":
+    import asyncio
+    from memsearch import MemSearch
+    user_dir = Path(f".memsearch_store/{user_id}")
+    md_files = sorted(user_dir.glob("*.md")) if user_dir.exists() else []
+    if not md_files:
+        print("(no memory files found)")
+    else:
+        for i, f in enumerate(md_files, 1):
+            print(f"[{i}] {f.name}")
+            print(f.read_text(encoding="utf-8"))
+            print()
+
 else:
-    print(f"Unknown adapter: {adapter_name}. Use 'langmem' or 'mem0'.")
+    print(f"Unknown adapter: {adapter_name}. Use 'langmem', 'mem0', or 'memsearch'.")
     sys.exit(1)
