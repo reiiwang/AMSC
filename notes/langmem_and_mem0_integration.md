@@ -218,6 +218,61 @@ list[SearchItem] → 取 item.value["content"]
 
 ---
 
+## 一之二、LangMem 記憶類型探索（Semantic / Episodic / Procedural）
+
+### 探索指令
+
+```python
+# 確認有哪些 memory schema 可用
+from langmem.knowledge import extraction
+dir(extraction)
+# 找到的相關項目：Memory, SummarizeThread, ExtractedMemory
+
+# 查看 Memory schema
+from langmem.knowledge.extraction import Memory, SummarizeThread
+Memory.model_fields.keys()
+# dict_keys(['content'])   ← 只有一個欄位，純字串
+
+SummarizeThread.model_fields.keys()
+# dict_keys(['title', 'summary'])
+
+# 嘗試 import EpisodicMemory → 失敗
+from langmem.knowledge.extraction import EpisodicMemory
+# ImportError: cannot import name 'EpisodicMemory'
+```
+
+### 結論：三種類型是 prompt 概念，不是獨立 class
+
+LangMem 0.0.30 中，Semantic / Episodic / Procedural **並非三個不同的 class 或模組**。
+它們是 `create_memory_manager` 預設 `instructions` prompt 中的概念分類：
+
+> *"maintaining a core store of **semantic**, **procedural**, and **episodic** memory"*
+
+也就是說，三種記憶類型全部存成同一個 `Memory(content: str)`，由 **LLM 的 prompt 決定抽取什麼性質的內容**。
+
+### 三種類型的實際含義
+
+| 類型 | 含義 | 目前 code 中的體現 |
+|------|------|-------------------|
+| **Semantic** | 用戶的事實（誰、什麼病、吃什麼藥）| `create_memory_manager` 預設涵蓋，自訂 `instructions` 有引導抽取 |
+| **Episodic** | 特定事件記憶（「上週量血壓 155/95」）| 部分涵蓋，但目前 `instructions` 偏向 semantic |
+| **Procedural** | agent 應如何行動的知識（行為模式、偏好）| **目前未實作**，需要 `create_prompt_optimizer` |
+
+### Procedural Memory 的正確做法
+
+Procedural memory 不是存在 store 裡，而是用 `create_prompt_optimizer` 根據對話歷史**直接修改 system prompt**：
+
+```python
+from langmem import create_prompt_optimizer
+
+optimizer = create_prompt_optimizer("openai:gpt-4o-mini")
+# 傳入對話歷史 → 回傳更新後的 system prompt 字串
+```
+
+這是 LangMem 與 Mem0 差異最大的地方之一：LangMem 可以讓 agent 從對話中學習並自我改進 prompt，Mem0 沒有這個機制。
+
+---
+
 ## 二、Mem0
 
 ### 安裝版本
