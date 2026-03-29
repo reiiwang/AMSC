@@ -1,7 +1,8 @@
 .PHONY: install index test test-langmem test-mem0 test-all \
         graph-mermaid graph-png \
         clean-chroma clean-langmem clean-mem0 clean-all \
-        chat-dummy chat-langmem chat-mem0
+        chat-dummy chat-langmem chat-mem0 \
+        inspect-langmem inspect-mem0
 
 # ── 環境 ──────────────────────────────────────────────
 install:
@@ -47,6 +48,17 @@ chat-langmem:
 
 chat-mem0:
 	uv run python scripts/chat_loop.py mem0
+
+# ── Memory 查詢 ──────────────────────────────────────
+# 用法: make inspect-langmem USER=user_001
+#       make inspect-mem0    USER=user_001
+USER ?= dev
+
+inspect-langmem:
+	uv run python scripts/inspect_memory.py langmem $(USER)
+
+inspect-mem0:
+	uv run python scripts/inspect_memory.py mem0 $(USER)
 
 # ── 清除 store ────────────────────────────────────────
 clean-chroma:
