@@ -508,6 +508,135 @@ Memory.search(query, user_id=..., limit=N)
 
 ---
 
+## 三、memsearch（OpenClaw 記憶系統）
+
+### 背景
+
+**OpenClaw**（前身 Moltbot / ClawdBot）是一個 AI agent 平台，內建一套記憶管理機制。
+**memsearch** 是 Zilliz（Milvus 母公司）將 OpenClaw 的記憶架構抽出並開源的獨立 Python 套件。
+
+- GitHub：[zilliztech/memsearch](https://github.com/zilliztech/memsearch)
+- 定位：Markdown-first、framework-agnostic、可接任何 agent 框架
+
+---
+
+### 核心設計哲學：Markdown as Source of Truth
+
+memsearch 與 LangMem / Mem0 最根本的差異：
+
+| | memsearch | LangMem / Mem0 |
+|---|---|---|
+| 記憶儲存格式 | **Markdown 檔案**（人類可讀、可 Git 版控）| 向量 DB 的 embedding |
+| Source of truth | **檔案系統**，vector DB 只是衍生 index | vector DB 本身 |
+| 搜尋方式 | Dense vector + **BM25 hybrid search**（RRF rerank）| 純 vector search |
+| 去重機制 | SHA-256 content hash，不重複 embed | 無（或由框架決定）|
+| 架構流程 | recall → think → **remember（寫 .md 檔）** | 對話結束後 extract → store |
+
+---
+
+### 安裝
+
+```bash
+pip install memsearch           # 基本版
+pip install "memsearch[onnx]"   # 本地 ONNX embedding（不需 API key）
+pip install "memsearch[all]"    # 全部 providers
+```
+
+支援的 embedding providers：OpenAI、Google Gemini、Voyage AI、Ollama（本地）、ONNX（本地）
+
+---
+
+### Python API
+
+```python
+from memsearch import MemSearch
+
+mem = MemSearch(paths=["./memory"])
+
+# 1. 索引 markdown 檔案（初次或有新檔時）
+await mem.index()
+
+# 2. 語意搜尋（hybrid: dense vector + BM25）
+results = await mem.search("Redis config", top_k=3)
+print(results[0]["content"], results[0]["score"])
+
+# 3. 限定範圍搜尋
+scoped = await mem.search("pricing", top_k=3, source_prefix="./memory/product")
+```
+
+**注意：所有主要方法都是 async**，需用 `asyncio.run()` 或在 async context 中呼叫。
+
+回傳格式：
+```python
+[
+    {"content": "記憶內容片段", "score": 0.87, "source": "./memory/user_001.md"},
+    ...
+]
+```
+
+---
+
+### Agent 使用模式（recall → think → remember）
+
+```python
+# recall：搜尋相關記憶
+results = await mem.search(user_input, top_k=5)
+context = "\n".join(r["content"] for r in results)
+
+# think：帶入記憶呼叫 LLM
+response = llm.invoke(system_prompt + context + user_input)
+
+# remember：把對話寫成 markdown 存檔，觸發重新索引
+memory_file.write(f"## {timestamp}\n**User:** {user_input}\n**Agent:** {response}\n")
+await mem.index()
+```
+
+---
+
+### 儲存結構
+
+```
+.memsearch_store/
+  user_001/
+    2026-03-29_session1.md   # 對話記錄（人類可讀）
+    2026-03-29_session2.md
+  milvus_lite.db             # Milvus Lite 本地向量索引（衍生，可重建）
+```
+
+Milvus 支援三種後端：
+- **Milvus Lite**（預設）：本地 `.db` 檔，零配置
+- **Milvus Standalone**：自架，支援多 agent 共用
+- **Zilliz Cloud**：托管服務
+
+---
+
+### CLI 工具
+
+```bash
+memsearch index ./memory/      # embed markdown 進 vector store
+memsearch search "query"       # hybrid 語意搜尋
+memsearch watch ./memory/      # 監聽檔案變更自動 re-index
+memsearch compact              # LLM 摘要壓縮 indexed chunks
+memsearch stats                # 顯示 indexed chunk 數量
+memsearch reset                # 清空所有資料
+```
+
+---
+
+### 接入我們專案的設計
+
+```python
+# save()：把對話寫成 .md 檔，觸發 index
+# retrieve()：await mem.search(query, top_k=5)
+# 持久化位置：.memsearch_store/<user_id>/
+```
+
+主要挑戰：
+1. **async API**：和 LangMem 一樣需要 `asyncio.run()`
+2. **Milvus Lite 依賴**：需額外安裝，本地 `.db` 檔與 `.chroma/`、`.mem0_store/` 並列
+
+---
+
 ## 四、共用的 BaseMemory 介面
 
 ```python
