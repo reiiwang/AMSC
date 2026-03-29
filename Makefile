@@ -15,19 +15,19 @@ index:
 
 # ── 測試 ──────────────────────────────────────────────
 test:
-	uv run python test_graph.py
+	uv run python tests/test_graph.py
 
 test-langmem:
-	uv run python test_langmem.py
+	uv run python tests/test_langmem.py
 
 test-mem0:
-	uv run python test_mem0.py
+	uv run python tests/test_mem0.py
 
 test-memsearch:
-	uv run python test_memsearch.py
+	uv run python tests/test_memsearch.py
 
 test-memgpt:
-	uv run python test_memgpt.py
+	uv run python tests/test_memgpt.py
 
 test-all: test test-langmem test-mem0 test-memsearch test-memgpt
 
