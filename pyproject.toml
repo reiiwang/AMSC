@@ -10,5 +10,6 @@ dependencies = [
     "langgraph>=1.1.3",
     "langmem>=0.0.30",
     "mem0ai>=1.0.8",
+    "memsearch[onnx]>=0.1.19",
     "python-dotenv>=1.2.2",
 ]
