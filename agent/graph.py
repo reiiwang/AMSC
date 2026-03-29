@@ -21,8 +21,12 @@ def build_graph(memory: BaseMemory = None, user_id: str = "default") -> StateGra
     if memory is None:
         memory = DummyMemory()
 
-    llm = ChatOpenAI(model="gpt-4o-mini").bind_tools(TOOLS)
-    tool_node = ToolNode(TOOLS)
+    # MemGPT-style adapters expose extra memory management tools
+    extra_tools = getattr(memory, "get_tools", lambda: [])()
+    all_tools = TOOLS + extra_tools
+
+    llm = ChatOpenAI(model="gpt-4o-mini").bind_tools(all_tools)
+    tool_node = ToolNode(all_tools)
 
     def retrieve_memory(state: AgentState) -> dict:
         last_user_msg = next(

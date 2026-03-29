@@ -21,13 +21,23 @@ elif adapter_name == "mem0":
 elif adapter_name == "memsearch":
     from memory.memsearch_adapter import MemsearchAdapter
     memory = MemsearchAdapter()
+elif adapter_name == "memgpt":
+    from memory.memgpt_adapter import MemGPTAdapter
+    memory = MemGPTAdapter()
 else:
     from memory.base import DummyMemory
     memory = DummyMemory()
 
 from agent.graph import build_graph
 
-user_id = input(f"User ID (default: dev): ").strip() or "dev"
+user_id = input("User ID (default: dev): ").strip() or "dev"
+
+# MemGPTAdapter needs user_id at init time
+if adapter_name == "memgpt":
+    memory._user_id = user_id
+    from memory.memgpt_adapter import _load_core
+    memory._core = _load_core(user_id)
+
 graph = build_graph(memory=memory, user_id=user_id)
 
 print(f"\nHealth Advisor [{adapter_name}] — user: {user_id}")

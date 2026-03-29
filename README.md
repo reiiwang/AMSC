@@ -40,13 +40,13 @@ save_memory       ── 將對話存入 memory 框架
 
 ## 比較對象
 
-| | LangMem | Mem0 | memsearch |
-|---|---|---|---|
-| 定位 | LangGraph 原生 | Framework-agnostic | OpenClaw 架構，framework-agnostic |
-| 記憶類型 | Semantic / Episodic / Procedural | 向量 + 知識圖譜 | Markdown 對話 chunk |
-| 搜尋方式 | Vector search | Vector search | **Hybrid（Dense + BM25）** |
-| 本地持久化 | `.langmem_store/<user_id>.json` | `.mem0_store/`（ChromaDB + SQLite）| `.memsearch_store/<user_id>/`（.md + Milvus Lite）|
-| 特色 | Procedural memory 可優化 system prompt | 實體關係抽取，跨對話連結 | **Markdown 可讀、可 Git 版控** |
+| | LangMem | Mem0 | memsearch | MemGPT |
+|---|---|---|---|---|
+| 定位 | LangGraph 原生 | Framework-agnostic | OpenClaw 架構 | OS-inspired，記憶為 agent 能力 |
+| 記憶類型 | Semantic / Episodic / Procedural | 向量 + 知識圖譜 | Markdown chunk | Core + Archival（兩層）|
+| 搜尋方式 | Vector search | Vector search | **Hybrid（Dense + BM25）** | Vector search |
+| 本地持久化 | `.langmem_store/<user_id>.json` | `.mem0_store/` | `.memsearch_store/<user_id>/` | `.memgpt_store/<user_id>.json` + ChromaDB |
+| **記憶管理主體** | 框架程式碼 | 框架程式碼 | 框架程式碼 | **LLM 自己（tool call）** |
 
 ---
 
@@ -79,6 +79,7 @@ make chat-dummy        # 無記憶
 make chat-langmem      # LangMem
 make chat-mem0         # Mem0
 make chat-memsearch    # memsearch（OpenClaw）
+make chat-memgpt       # MemGPT（LLM 自管記憶）
 ```
 
 ---

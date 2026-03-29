@@ -93,6 +93,13 @@ AgentMemory/
 - [x] 持久化：`.memsearch_store/<user_id>/` 存 .md 檔 + Milvus Lite .db
 - [x] smoke test 通過
 
+### Phase 3c — MemGPT 設計哲學實作
+- [x] 撰寫設計哲學筆記 `notes/memgpt_design.md`（含資料來源聲明）
+- [x] 實作 `memgpt_adapter.py`：Core Memory blocks + Archival Memory（ChromaDB）
+- [x] 新增四個記憶管理 tools：`core_memory_append`, `core_memory_replace`, `archival_memory_insert`, `archival_memory_search`
+- [x] 更新 `build_graph()` 支援 `get_tools()` 擴充介面
+- [x] smoke test 通過
+
 ### Phase 4 — LLM-as-Judge 評估
 - [ ] `metrics.py`：定義三個評分維度（各 1-5 分）
 - [ ] `judge.py`：呼叫 Claude 對每個回答評分，輸出 JSON

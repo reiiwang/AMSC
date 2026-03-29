@@ -58,6 +58,18 @@ elif adapter_name == "memsearch":
             print(f.read_text(encoding="utf-8"))
             print()
 
+elif adapter_name == "memgpt":
+    import json
+    store_file = Path(f".memgpt_store/{user_id}.json")
+    if not store_file.exists():
+        print("(no core memory found)")
+    else:
+        blocks = json.loads(store_file.read_text())
+        for label, value in blocks.items():
+            print(f"[{label}] ({len(value)} chars)")
+            print(value)
+            print()
+
 else:
-    print(f"Unknown adapter: {adapter_name}. Use 'langmem', 'mem0', or 'memsearch'.")
+    print(f"Unknown adapter: {adapter_name}. Use 'langmem', 'mem0', 'memsearch', or 'memgpt'.")
     sys.exit(1)
