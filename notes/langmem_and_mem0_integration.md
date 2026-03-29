@@ -520,6 +520,32 @@ Memory.search(query, user_id=..., limit=N)
 
 ---
 
+### OpenClaw 原版記憶設計 vs memsearch
+
+> **重要釐清**：OpenClaw 原版的記憶哲學與 memsearch library 的用法有本質差異。
+
+#### OpenClaw 原版（LLM-managed memory）
+
+OpenClaw 的記憶設計接近 MemGPT：**LLM 自己決定要記什麼，主動把資訊寫進 Markdown 檔**，不是直接記錄原始對話。
+
+- 兩層結構：
+  - `memory/YYYY-MM-DD.md`：當日流水帳（append-only daily notes）
+  - `MEMORY.md`：長期精煉事實（curated facts、偏好）
+- LLM 根據對話判斷「這件事值得長期記憶」→ 主動寫入
+- **Automatic memory flush**：context window 要被壓縮前，LLM 先把重要資訊寫到磁碟，防止遺忘
+- 參考：https://docs.openclaw.ai/concepts/memory
+
+#### memsearch library（本專案使用）
+
+memsearch 是 Zilliz 將 OpenClaw **搜尋部分**抽出開源的工具，專注於「如何高效搜尋 Markdown 記憶」，**不規定 Markdown 由誰寫**：
+
+- 你可以讓 LLM 寫（忠於 OpenClaw 原版設計）
+- 也可以讓程式碼寫（本專案的做法：直接把對話格式化成 Markdown）
+
+**本專案的 `MemsearchAdapter` 選擇讓程式碼寫**，目的是展示「0 LLM call 的極低成本記憶方案」，但這偏離了 OpenClaw 的原始意圖。若要還原 OpenClaw 哲學，save() 應改為讓 LLM 判斷後再寫檔。
+
+---
+
 ### 核心設計哲學：Markdown as Source of Truth
 
 memsearch 與 LangMem / Mem0 最根本的差異：
