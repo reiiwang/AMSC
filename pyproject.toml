@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "agentic-memory",
     "anthropic>=0.86.0",
     "chromadb>=1.5.5",
     "langchain-openai>=1.1.12",
@@ -13,3 +14,6 @@ dependencies = [
     "memsearch[onnx]>=0.1.19",
     "python-dotenv>=1.2.2",
 ]
+
+[tool.uv.sources]
+agentic-memory = { git = "https://github.com/agiresearch/A-mem.git" }
