@@ -24,6 +24,9 @@ elif adapter_name == "memsearch":
 elif adapter_name == "memgpt":
     from memory.memgpt_adapter import MemGPTAdapter
     memory = MemGPTAdapter()
+elif adapter_name == "amem":
+    from memory.amem_adapter import AMemAdapter
+    memory = AMemAdapter()
 else:
     from memory.base import DummyMemory
     memory = DummyMemory()

@@ -15,4 +15,5 @@ wheels/
 .mem0_store/
 .memsearch_store/
 .memgpt_store/
+.amem_store/
 graph.png

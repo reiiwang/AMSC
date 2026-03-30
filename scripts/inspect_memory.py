@@ -70,6 +70,27 @@ elif adapter_name == "memgpt":
             print(value)
             print()
 
+elif adapter_name == "amem":
+    import json
+    store_file = Path(f".amem_store/{user_id}.json")
+    if not store_file.exists():
+        print("(no memories found)")
+    else:
+        notes = json.loads(store_file.read_text())
+        if not notes:
+            print("(no memories found)")
+        else:
+            for i, note in enumerate(notes, 1):
+                print(f"[{i}] {note['content'][:120]}{'...' if len(note['content']) > 120 else ''}")
+                print(f"    id      : {note['id']}")
+                print(f"    keywords: {', '.join(note.get('keywords', [])[:6])}")
+                print(f"    tags    : {', '.join(note.get('tags', [])[:4])}")
+                print(f"    context : {note.get('context', '')[:100]}")
+                links = note.get('links', [])
+                if links:
+                    print(f"    links   : {links}")
+                print()
+
 else:
-    print(f"Unknown adapter: {adapter_name}. Use 'langmem', 'mem0', 'memsearch', or 'memgpt'.")
+    print(f"Unknown adapter: {adapter_name}. Use 'langmem', 'mem0', 'memsearch', 'memgpt', or 'amem'.")
     sys.exit(1)
