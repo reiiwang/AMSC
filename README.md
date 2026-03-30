@@ -1,6 +1,6 @@
 # Agent Memory 框架比較
 
-> 用同一個 LangGraph agent，比較 **LangMem** 與 **Mem0** 兩種 memory 框架對跨對話記憶品質的影響。
+> 用同一個 LangGraph agent，比較 **LangMem**、**Mem0**、**memsearch**、**MemGPT**、**A-MEM** 五種 memory 框架對跨對話記憶品質的影響。
 
 ---
 
@@ -40,13 +40,15 @@ save_memory       ── 將對話存入 memory 框架
 
 ## 比較對象
 
-| | LangMem | Mem0 | memsearch | MemGPT |
-|---|---|---|---|---|
-| 定位 | LangGraph 原生 | Framework-agnostic | OpenClaw 架構 | OS-inspired，記憶為 agent 能力 |
-| 記憶類型 | Semantic / Episodic / Procedural | 向量 + 知識圖譜 | Markdown chunk | Core + Archival（兩層）|
-| 搜尋方式 | Vector search | Vector search | **Hybrid（Dense + BM25）** | Vector search |
-| 本地持久化 | `.langmem_store/<user_id>.json` | `.mem0_store/` | `.memsearch_store/<user_id>/` | `.memgpt_store/<user_id>.json` + ChromaDB |
-| **記憶管理主體** | 框架程式碼 | 框架程式碼 | 框架程式碼 | **LLM 自己（tool call）** |
+| | LangMem | Mem0 | memsearch | MemGPT | A-MEM |
+|---|---|---|---|---|---|
+| 定位 | LangGraph 原生 | Framework-agnostic | OpenClaw 架構 | OS-inspired | Zettelkasten-inspired |
+| 記憶類型 | Semantic / Episodic / Procedural | 向量 + 知識圖譜 | Markdown chunk | Core + Archival（兩層）| Structured notes + links |
+| 搜尋方式 | Vector search | Vector search | **Hybrid（Dense + BM25）** | Vector search | Vector + 連結圖擴展 |
+| 去重 / 更新 | LLM 判斷 | vector similarity + LLM | SHA-256 hash | 無自動（LLM 可手動改） | 語意 dedup via linking |
+| 本地持久化 | `.langmem_store/<user_id>.json` | `.mem0_store/` | `.memsearch_store/<user_id>/` | `.memgpt_store/<user_id>.json` | `.amem_store/<user_id>.json` |
+| 額外 LLM call/turn | 1 次 | **2 次** | 0 次 | 0-N 次（自決）| **2-3+ 次** |
+| **記憶管理主體** | 框架程式碼 | 框架程式碼 | 框架程式碼 | **LLM 自己（tool call）** | 框架 + **LLM 主導內容組織** |
 
 ---
 
@@ -80,6 +82,7 @@ make chat-langmem      # LangMem
 make chat-mem0         # Mem0
 make chat-memsearch    # memsearch（OpenClaw）
 make chat-memgpt       # MemGPT（LLM 自管記憶）
+make chat-amem         # A-MEM（Zettelkasten 連結演化）
 ```
 
 ---
@@ -94,9 +97,12 @@ AgentMemory/
 │   └── tools.py        # search_knowledge_base, get_user_health_profile
 │
 ├── memory/
-│   ├── base.py         # BaseMemory 抽象介面
+│   ├── base.py               # BaseMemory 抽象介面
 │   ├── langmem_adapter.py
-│   └── mem0_adapter.py
+│   ├── mem0_adapter.py
+│   ├── memsearch_adapter.py
+│   ├── memgpt_adapter.py     # get_tools() 擴充介面
+│   └── amem_adapter.py       # A-MEM Zettelkasten notes
 │
 ├── rag/
 │   ├── indexer.py      # 一次性建立 ChromaDB 索引
@@ -107,8 +113,10 @@ AgentMemory/
 │   └── mock_conversations.json   # 3 用戶 × 10 輪模擬對話
 │
 ├── notes/
-│   ├── agent_design.md           # Agent 架構詳細說明與踩坑記錄
-│   └── langmem_and_mem0_integration.md  # 兩個框架的 API 整合筆記
+│   ├── agent_design.md                   # Agent 架構詳細說明與踩坑記錄
+│   ├── langmem_and_mem0_integration.md   # 各框架 API 整合筆記（含 memsearch / A-MEM）
+│   ├── memgpt_design.md                  # MemGPT 設計哲學與資料來源聲明
+│   └── memory_framework_comparison.md   # 所有框架深度比較表格
 │
 └── scripts/
     └── chat_loop.py    # 互動對話入口
@@ -124,7 +132,9 @@ AgentMemory/
 | 1 | ✅ | LangGraph agent（工具呼叫、RAG、條件式節點）|
 | 2 | ✅ | LangMem adapter |
 | 3 | ✅ | Mem0 adapter |
-| 3b | ✅ | memsearch adapter（OpenClaw，Markdown-first）|
+| 3b | ✅ | memsearch adapter（OpenClaw，Markdown-first，hybrid search）|
+| 3c | ✅ | MemGPT adapter（LLM 自管記憶，get_tools() 介面）|
+| 3d | ✅ | A-MEM adapter（Zettelkasten notes，memory evolution）|
 | 4 | 🔲 | LLM-as-judge 評估（連貫性 / 個人化 / 事實準確性）|
 | 5 | 🔲 | Notebook 視覺化比較 |
 
@@ -133,10 +143,13 @@ AgentMemory/
 ## 技術棧
 
 - **LangGraph** — agent orchestration
-- **LangMem** — memory framework A
-- **Mem0** — memory framework B
-- **memsearch** — memory framework C（OpenClaw 架構）
-- **ChromaDB** — RAG 向量儲存 + Mem0 後端
+- **LangMem** — memory framework A（LangGraph 原生）
+- **Mem0** — memory framework B（vector + graph）
+- **memsearch** — memory framework C（OpenClaw，hybrid BM25+dense）
+- **MemGPT** — memory framework D（LLM self-managed，手刻實作）
+- **A-MEM** — memory framework E（Zettelkasten notes，NeurIPS 2025）
+- **ChromaDB** — RAG 向量儲存 + Mem0 / MemGPT / A-MEM 後端
 - **Milvus Lite** — memsearch 向量後端
 - **OpenAI** — gpt-4o-mini（LLM）、text-embedding-3-small（embedding）
+- **all-MiniLM-L6-v2** — A-MEM embedding（本地，不需 API key）
 - **uv** — 套件管理

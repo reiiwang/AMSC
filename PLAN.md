@@ -1,18 +1,18 @@
 # Agent Memory 框架比較 — 學習專案
 
 ## 目標
-用固定的 LangGraph agent，比較不同 memory 框架（LangMem vs Mem0）對跨對話記憶品質的影響，並用 LLM-as-judge 做量化評估。
+用固定的 LangGraph agent，比較不同 memory 框架對跨對話記憶品質的影響，並用 LLM-as-judge 做量化評估。
 
 ## 核心概念
 
 **比較對象（變數）：Memory 框架**
 
-| | LangMem | Mem0 |
-|---|---|---|
-| 定位 | LangGraph 原生 | Framework-agnostic |
-| Memory 類型 | Semantic / Episodic / Procedural | 向量 + Graph（知識圖譜）|
-| 儲存 | 自管（接 vector store） | 自管或託管服務 |
-| 特色 | Procedural memory 可自動優化 system prompt | 實體關係抽取，跨對話連結 |
+| | LangMem | Mem0 | memsearch | MemGPT | A-MEM |
+|---|---|---|---|---|---|
+| 定位 | LangGraph 原生 | Framework-agnostic | OpenClaw 架構 | OS-inspired | Zettelkasten-inspired |
+| Memory 類型 | Semantic / Episodic / Procedural | 向量 + Graph | Markdown chunk | Core + Archival | Structured notes + links |
+| 儲存 | 自管（接 vector store）| 自管或託管 | Milvus + .md 檔 | JSON + ChromaDB | ChromaDB + JSON |
+| 特色 | Procedural memory | 實體關係抽取 | Hybrid BM25+dense search | LLM 自管記憶 | Memory evolution（連結演化） |
 
 **固定不變：LangGraph agent 骨架**（同一套 graph，只換 memory adapter）
 
@@ -100,6 +100,14 @@ AgentMemory/
 - [x] 更新 `build_graph()` 支援 `get_tools()` 擴充介面
 - [x] smoke test 通過
 
+### Phase 3d — A-MEM 實作（Zettelkasten-inspired）
+- [x] 研究 A-MEM 論文（NeurIPS 2025, arxiv 2502.12110）及 agiresearch/A-mem 原始碼
+- [x] 補充筆記：`notes/langmem_and_mem0_integration.md` 新增 A-MEM 章節
+- [x] 更新 `notes/memory_framework_comparison.md` 加入 A-MEM 欄位
+- [x] 安裝 `agiresearch/A-mem` via uv（git URL）
+- [x] 實作 `amem_adapter.py`：`analyze_content` + `add_note` + JSON 持久化（`.amem_store/`）
+- [x] smoke test 通過
+
 ### Phase 4 — LLM-as-Judge 評估
 - [ ] `metrics.py`：定義三個評分維度（各 1-5 分）
 - [ ] `judge.py`：呼叫 Claude 對每個回答評分，輸出 JSON
@@ -133,5 +141,8 @@ AgentMemory/
 | Graph framework | LangGraph | 有狀態 graph，易於插拔 memory layer |
 | Memory 框架 A | LangMem | LangGraph 原生整合，學習成本低 |
 | Memory 框架 B | Mem0 | Graph memory 架構差異最大，對比明顯 |
-| LLM | Claude (claude-sonnet-4-6) | 統一用同一模型，確保評估公平 |
+| Memory 框架 C | memsearch（OpenClaw 架構） | Markdown-first、hybrid BM25+dense、0 LLM call |
+| Memory 框架 D | MemGPT（手刻） | LLM 自管記憶哲學展示 |
+| Memory 框架 E | A-MEM | Zettelkasten 連結演化，NeurIPS 2025 論文實作 |
+| LLM | gpt-4o-mini | agent + memory manager 統一使用 |
 | 套件管理 | uv | 快速、現代 |

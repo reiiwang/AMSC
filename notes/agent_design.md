@@ -253,13 +253,16 @@ class BaseMemory(ABC):
     def retrieve(self, user_id: str, query: str) -> str: ...
 ```
 
-三個實作：
+六個實作：
 
 | Adapter | 說明 | 持久化位置 |
 |---------|------|-----------|
 | `DummyMemory` | no-op，用於測試 | 無 |
 | `LangMemAdapter` | LangMem + InMemoryStore | `.langmem_store/<user_id>.json` |
 | `Mem0Adapter` | mem0ai + ChromaDB | `.mem0_store/` |
+| `MemsearchAdapter` | memsearch (OpenClaw) + Milvus Lite | `.memsearch_store/<user_id>/` |
+| `MemGPTAdapter` | 手刻 MemGPT，Core Memory + Archival Memory，額外實作 `get_tools()` | `.memgpt_store/<user_id>.json` + `.memgpt_store/chroma/` |
+| `AMemAdapter` | A-MEM (NeurIPS 2025)，Zettelkasten notes + memory evolution | `.amem_store/<user_id>.json` |
 
 ---
 
@@ -278,6 +281,21 @@ class BaseMemory(ABC):
 - `memory` 和 `user_id` 透過 closure 傳入各 node function
 - Graph 本身無狀態，memory 邏輯完全在 adapter 內
 - 切換 adapter 只需在 `build_graph()` 傳入不同物件
+
+### 5. get_tools() 擴充介面（MemGPT 用）
+
+部分 adapter（目前只有 `MemGPTAdapter`）需要將自己的工具注入 agent。透過可選介面實現：
+
+```python
+# agent/graph.py
+extra_tools = getattr(memory, "get_tools", lambda: [])()
+all_tools = TOOLS + extra_tools
+llm = ChatOpenAI(model="gpt-4o-mini").bind_tools(all_tools)
+tool_node = ToolNode(all_tools)
+```
+
+- 不強制所有 adapter 實作 `get_tools()`，用 `getattr` + 預設 lambda 避免 AttributeError
+- MemGPT 的四個工具（`core_memory_append`, `core_memory_replace`, `archival_memory_insert`, `archival_memory_search`）以 closure 方式建立，直接修改 adapter 的 `_core` 和 ChromaDB store
 
 ### 4. save_memory 在每輪結束觸發
 - 每次對話（包括工具呼叫完成後）都會執行 `save_memory`
@@ -316,9 +334,39 @@ while recent_messages and recent_messages[0].type == "tool":
 
 LangGraph message type 與各層系統的對應：
 
-| LangGraph `m.type` | LangChain class | LangMem | Mem0 |
-|--------------------|----------------|---------|------|
-| `"human"` | `HumanMessage` | `HumanMessage` | `"user"` |
-| `"ai"` | `AIMessage` | `AIMessage` | `"assistant"` |
-| `"tool"` | `ToolMessage` | 忽略 | 忽略 |
-| `"system"` | `SystemMessage` | 忽略 | 忽略 |
+| LangGraph `m.type` | LangChain class | LangMem | Mem0 | memsearch | MemGPT | A-MEM |
+|--------------------|----------------|---------|------|-----------|--------|-------|
+| `"human"` | `HumanMessage` | `HumanMessage` | `"user"` | 取用 content | 取用 content | 取用 content |
+| `"ai"` | `AIMessage` | `AIMessage` | `"assistant"` | 取用 content | 取用 content | 取用 content |
+| `"tool"` | `ToolMessage` | 忽略 | 忽略 | 忽略 | 忽略 | 忽略 |
+| `"system"` | `SystemMessage` | 忽略 | 忽略 | 忽略 | 忽略 | 忽略 |
+
+---
+
+## 十、踩坑補充
+
+### A-MEM：`analyze_content` 不會自動被 `add_note` 呼叫
+
+**問題**：直接呼叫 `system.add_note(content)` 後，note 的 `keywords`、`tags`、`context` 全為空。
+
+**原因**：`AgenticMemorySystem.add_note()` 接受 keywords/tags/context 參數，但不會自動呼叫 `analyze_content()`，需要自己先呼叫：
+
+```python
+analysis = system.analyze_content(content)  # LLM call 1：生成 keywords/tags/context
+note_id = system.add_note(
+    content=content,
+    keywords=analysis.get("keywords", []),
+    context=analysis.get("context", "General"),
+    tags=analysis.get("tags", []),
+)  # LLM call 2+：link analysis + memory evolution
+```
+
+**位置**：`memory/amem_adapter.py` 的 `save()` 方法。
+
+### A-MEM：in-memory ChromaDB，重啟後記憶消失
+
+**問題**：`AgenticMemorySystem` 內部的 `ChromaRetriever` 使用 `chromadb.Client()`（ephemeral），process 結束即清空。
+
+**解法**：每次 `save()` 後將 `system.memories` 序列化成 JSON；啟動時 `_get_system()` 讀 JSON，逐條呼叫 `retriever.add_document()` 重建 ChromaDB 索引。與 LangMem 的 JSON reload 模式相同。
+
+**代價**：reload 時不重新執行 memory evolution（連結關係存在 `links` 欄位，直接讀回）。
