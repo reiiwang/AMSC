@@ -663,7 +663,120 @@ memsearch reset                # 清空所有資料
 
 ---
 
-## 四、共用的 BaseMemory 介面
+## 四、A-MEM（Agentic Memory）
+
+> 論文：[A-MEM: Agentic Memory for LLM Agents](https://arxiv.org/abs/2502.12110)（Xu et al., NeurIPS 2025）
+> GitHub：https://github.com/agiresearch/A-mem
+
+---
+
+### 核心設計哲學：Zettelkasten-inspired Memory Network
+
+A-MEM 的設計靈感來自 **Zettelkasten**（卡片盒筆記法）：每條記憶是一個獨立的 atomic note，notes 之間透過語意連結形成知識網絡。與其他框架最大的差異在於：**加入新記憶時，LLM 會主動分析並更新已有記憶的 context**，讓整個記憶網絡持續演化（memory evolution）。
+
+---
+
+### 安裝
+
+```bash
+# 官方實作（NeurIPS 研究版）
+git clone https://github.com/WujiangXu/A-mem.git
+pip install -r requirements.txt
+
+# 系統庫版本（可 pip install）
+git clone https://github.com/agiresearch/A-mem.git
+cd A-mem && pip install .
+```
+
+需要設定 `OPENAI_API_KEY`（或 Ollama）。
+
+---
+
+### Python API
+
+```python
+from agentic_memory.memory_system import AgenticMemorySystem
+
+memory = AgenticMemorySystem(
+    model_name='all-MiniLM-L6-v2',  # embedding model
+    llm_backend="openai",
+    llm_model="gpt-4o-mini"
+)
+
+# 新增記憶（觸發 LLM note 生成 + 連結分析）
+memory.add_note(content="用戶目前服用 metformin 500mg，每日兩次")
+
+# 語意搜尋
+results = memory.search_agentic("用戶的用藥情況", k=5)
+
+# 更新 / 刪除
+memory.update(memory_id, content="新內容")
+memory.delete(memory_id)
+```
+
+---
+
+### Ingestion Pipeline（add_note 內部流程）
+
+1. **Note 生成**：LLM 將原始 content 轉成結構化 note，包含：
+   - `content`：原始內容
+   - `context`：LLM 生成的 contextual description
+   - `keywords`：關鍵字列表
+   - `tags`：分類標籤
+   - `connections`：與哪些既有記憶有連結（ID 列表）
+   - `timestamp`、`relevance_score`
+
+2. **連結分析**：LLM 搜尋歷史記憶，找到語意相關的 notes 並建立雙向連結
+
+3. **Memory Evolution**：被連結的歷史記憶，其 `context` 欄位被 LLM 更新以反映新資訊的關聯性
+
+4. **Embedding + 儲存**：note 整體向量化後存入 ChromaDB
+
+---
+
+### LLM Call 數量
+
+| 階段 | LLM Call 數 | 說明 |
+|------|-------------|------|
+| Note 生成 | 1 次 | 生成 keywords/tags/context |
+| 連結分析 | 1 次 | 分析哪些舊記憶相關 |
+| Memory Evolution | N 次 | 每條被連結的舊記憶各 1 次 context 更新 |
+| **總計** | **2 + N 次** | N = 相關歷史記憶數；記憶庫越大成本越高 |
+
+---
+
+### Search 機制
+
+```
+query → embed → ChromaDB similarity search
+              → 沿 connections 展開相關 notes（graph traversal）
+              → 合併結果，附 keywords/tags/context 返回
+```
+
+不使用 BM25；純向量 + 連結圖擴展。
+
+---
+
+### Storage
+
+- **ChromaDB**：向量儲存（persistent）
+- **連結資訊**：存在每個 note 的 metadata 中（非獨立 graph DB）
+- 無 SQLite history / 無 Markdown 檔
+
+---
+
+### 與本專案的關係
+
+A-MEM 目前**未實作**為本專案的 adapter，定位為**研究參考**。
+
+若要接入，設計上需處理：
+1. `add_note()` 無法接受 `messages: list[dict]`，需先將對話轉成單一 content string 或逐條 add
+2. Memory evolution 的成本隨對話累積線性增長，需評估是否值得
+3. Embedding 預設用本地 `all-MiniLM-L6-v2`（可換 OpenAI），不需要額外 API key
+
+---
+
+## 五、共用的 BaseMemory 介面
 
 ```python
 class BaseMemory(ABC):
