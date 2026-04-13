@@ -188,14 +188,18 @@ manager = create_memory_store_manager(
 
 注意事項
 vLLM 要支援 embedding 需要加 --runner pooling（或依模型不同）：
-bashvllm serve BAAI/bge-m3 --runner pooling --port 8001
+```bash
+vllm serve BAAI/bge-m3 --runner pooling --port 8001
+```
 維度要對：dims 必須跟模型實際輸出維度一致，否則儲存時會報錯。可以用 vllm_embed.embed_query("test") 先量一下長度。
 query_model 也可以換：如果要 memory manager 用不同模型搜尋，同樣傳 BaseChatModel：
-pythonmanager = create_memory_store_manager(
+```python
+manager = create_memory_store_manager(
     vllm_llm,
     query_model=ChatOpenAI(model="smaller-model", ...),
     namespace=("memories", "user_1"),
 )
+```
 
 
 
