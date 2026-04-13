@@ -416,3 +416,16 @@ for r in results:
     print(f"[{r.score:.2f}] {r.value}")
 ```
 SqliteStore 是檔案型資料庫，多個連線同時讀沒問題，但同時寫入要小心 SQLite 本身的 write lock 限制。如果 ingestion 和 search 會並發執行，建議之後換 PostgreSQL。
+
+
+---
+
+1. 新增
+2. 更新 (衝突)
+3. 刪除
+
+
+- 每個回答都不超過兩句話
+- 請全程用英文回答我
+- Apollo 11 簡稱叫 A11 -> A11 的指令艙
+- 記錄問了哪些問題 -> 共問了幾個問題
