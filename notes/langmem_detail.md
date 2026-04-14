@@ -387,3 +387,162 @@ async def after_turn(messages, user_id):
 
 
 > 使用自訂 vLLM embedding endpoint：設定 `embedding_base_url` 指向你的 vLLM server。
+
+
+
+---
+
+memsearch 的 embedding 系統設計在 embeddings/__init__.py 中，採用 EmbeddingProvider protocol 加上 lazy-loading factory，內建 provider 包含：openai、google、voyage、ollama、local、onnx。
+當你用 vLLM 包成 OpenAI-Compatible 的 embedding server（/v1/embeddings），可以用 openai provider 指向自訂 endpoint：
+
+```
+# ~/.memsearch/config.toml
+[embedding]
+provider = "openai"
+model = "your-model-name"      # vLLM serve 的模型名稱
+api_base = "http://localhost:8000/v1"
+api_key = "EMPTY"              # vLLM 不需要真實 key
+```
+or
+```python
+from memsearch import MemSearch
+import os
+
+os.environ["OPENAI_API_KEY"] = "EMPTY"
+os.environ["OPENAI_API_BASE"] = "http://localhost:8000/v1"
+
+mem = MemSearch(
+    paths=["./memory"],
+    embedding_provider="openai",
+)
+```
+memsearch v0.2.3 的 changelog 裡有一條修正：fix: force encoding_format=float for OpenAI-compatible endpoints。 這代表舊版可能對 vLLM 有相容性問題（base64 encoding 報錯），請確保使用 v0.2.3 以上版本。
+
+
+memsearch 的 compact.py 負責 LLM-powered 的 chunk summarization，支援 OpenAI / Anthropic / Gemini。 它並沒有內建 LangChain LLM interface。
+但有幾種繞道方式：
+方案 1：如果 LangChain LLM 也是 OpenAI-Compatible（例如用 ChatOpenAI 指向本地 vLLM），memsearch 的 compact 功能其實只需要一個能接受 prompt 的 HTTP 端點，所以可以：
+```
+[llm]
+provider = "openai"
+model = "your-llm-model"
+api_base = "http://localhost:8000/v1"
+api_key = "EMPTY"
+```
+
+方案 2：用 Python API 自行處理 LLM 部分
+memsearch 的 LLM 只在 compact（記憶壓縮）時用到。如果你只是用 index() 和 search()，完全不需要 LLM。你可以自己拿 LangChain LLM 來處理 compact 邏輯：
+```
+from memsearch import MemSearch
+from langchain_openai import ChatOpenAI  # 或任何 LangChain LLM
+
+# memsearch 只負責 embedding + search
+mem = MemSearch(paths=["./memory"], embedding_provider="openai")
+results = await mem.search("your query")
+
+# LangChain LLM 自己處理 summarization
+llm = ChatOpenAI(base_url="http://localhost:8000/v1", api_key="EMPTY", model="...")
+summary = llm.invoke(f"Summarize these memories: {results}")
+```
+
+
+```
+# embedding: 指向 vLLM embedding server
+export OPENAI_API_KEY="EMPTY"
+export OPENAI_API_BASE="http://localhost:8000/v1"
+
+# LLM: compact 用的 chat model（可以是同一個或另一個 endpoint）
+# memsearch 的 compact 預設讀 OPENAI_API_KEY / ANTHROPIC_API_KEY / GOOGLE_API_KEY
+export OPENAI_API_KEY="EMPTY"
+```
+
+```
+import asyncio
+from datetime import date
+from pathlib import Path
+from openai import OpenAI
+from memsearch import MemSearch
+
+MEMORY_DIR = "./memory"
+
+# LLM client — 指向你的 vLLM 或 LangChain LLM server
+llm = OpenAI(
+    api_key="EMPTY",
+    base_url="http://localhost:8001/v1",  # LLM endpoint（可與 embedding 不同 port）
+)
+
+# MemSearch — embedding 走 OPENAI_API_BASE 環境變數
+mem = MemSearch(
+    paths=[MEMORY_DIR],
+    embedding_provider="openai",      # 使用 openai provider
+    embedding_model="your-embed-model-name",  # vLLM serve 的模型名稱
+)
+
+def ingest(content: str):
+    """寫入記憶到 markdown，然後 index"""
+    p = Path(MEMORY_DIR) / f"{date.today()}.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "a") as f:
+        f.write(f"\n{content}\n")
+
+async def main():
+    # ── Ingest ──────────────────────────────────────────────
+    ingest("## 專案決策\n- 使用 PostgreSQL 作為主資料庫\n- Redis 做 cache layer")
+    ingest("## 團隊\n- Alice 負責前端\n- Bob 負責後端 API")
+    
+    await mem.index()  # chunk → embed → upsert to Milvus
+    print("✅ Indexed")
+
+    # ── Search ──────────────────────────────────────────────
+    query = "我們用什麼資料庫？"
+    results = await mem.search(query, top_k=3)
+    
+    context = "\n".join(f"- {r['content'][:300]}" for r in results)
+    print(f"\n🔍 搜尋結果：\n{context}")
+
+    # ── 用 LLM 回答（LangChain / vLLM 都適用）────────────────
+    resp = llm.chat.completions.create(
+        model="your-llm-model-name",
+        messages=[
+            {"role": "system", "content": f"你有以下記憶：\n{context}"},
+            {"role": "user", "content": query},
+        ],
+    )
+    print(f"\n🤖 回答：{resp.choices[0].message.content}")
+
+asyncio.run(main())
+```
+
+
+在專案根目錄建立 .memsearch.toml：
+```
+# .memsearch.toml
+
+[embedding]
+provider = "openai"
+model = "your-embed-model-name"   # 對應 vLLM serve 的模型名稱
+# api_base 由環境變數 OPENAI_API_BASE 讀入
+# 若要寫死在 config：（需 v0.1.15+ 的 configurable OpenAI endpoint 功能）
+# api_base = "http://localhost:8000/v1"
+
+[milvus]
+uri = "~/.memsearch/milvus.db"    # 預設 Milvus Lite（本機單檔）
+```
+然後 Python 端就不需要額外設定：
+```
+mem = MemSearch(paths=["./memory"])  # 自動讀 .memsearch.toml
+```
+
+LLM 是 LangChain 物件
+
+
+
+
+
+
+
+
+
+
+
+
